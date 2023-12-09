@@ -1,0 +1,13 @@
+[package]
+name = "hecklang"
+description = "A hecking programming language"
+version = "0.1.0"
+edition = "2021"
+authors = ["Bradley Reynolds <bradley.reynolds@darbia.dev>"]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/shenanigansd/hecklang/"
+keywords = ["cli"]
+categories = ["command-line-utilities"]
+
+[dependencies]

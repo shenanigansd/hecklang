@@ -1,0 +1,70 @@
+name: "Rust CI"
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  lint:
+    uses: darbiadev/.github/.github/workflows/rust-lint.yaml@b0749d50c2f32c5672a7c459f55f39416941c26d # v5.1.0
+
+  clippy:
+    needs: lint
+    uses: darbiadev/.github/.github/workflows/rust-clippy.yaml@b0749d50c2f32c5672a7c459f55f39416941c26d # v5.1.0
+
+  test:
+    needs: clippy
+    strategy:
+      matrix:
+        triple:
+          - { os: "ubuntu-latest", target: "x86_64-unknown-linux-gnu" }
+
+    uses: darbiadev/.github/.github/workflows/rust-test.yaml@b0749d50c2f32c5672a7c459f55f39416941c26d # v5.1.0
+    with:
+      os: ${{ matrix.triple.os }}
+      target: ${{ matrix.triple.target }}
+
+  docs:
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: darbiadev/.github/.github/workflows/github-pages-rust-doc.yaml@b0749d50c2f32c5672a7c459f55f39416941c26d # v5.1.0
+
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout repo"
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: "Cache Rust and project dependencies"
+        id: cache
+        uses: actions/cache@704facf57e6136b1bc63b828d79edcd491f0ee84 # v3.3.2
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: cargo-${{ hashFiles('Cargo.lock') }}
+
+      - name: "Install grcov"
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: cargo install grcov
+
+      - name: "Run tests"
+        run: cargo test --no-fail-fast
+        env:
+          RUSTFLAGS: "-Cinstrument-coverage"
+          LLVM_PROFILE_FILE: "selene-%p-%m.profraw"
+
+      - name: "Generate coverage data"
+        run: |
+          grcov . -s . --binary-path ./target/debug/ -t lcov --branch --ignore-not-existing --ignore "/*" -o lcov.info
+
+      - name: "Upload coverage reports to Codecov"
+        uses: codecov/codecov-action@eaaf4bedf32dbdc6b720b63067d99c4d77d6047d # v3.1.4
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
